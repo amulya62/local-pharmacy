@@ -120,19 +120,27 @@ document.getElementById('authForm').onsubmit = async (e) => {
             body: JSON.stringify(body)
         });
 
-        const data = await res.json();
-        
+        let data;
+        const textResponse = await res.text();
+        try {
+            data = JSON.parse(textResponse);
+        } catch (parseErr) {
+            console.error("Raw Server Response:", textResponse);
+            showToast(`Server returned an invalid response. Raw output: ${textResponse.substring(0, 60)}...`, 'error');
+            return;
+        }
+
         if (res.ok) {
             localStorage.setItem('user', JSON.stringify(data));
             showToast(isLogin ? `Welcome back, ${data.name}!` : `Account created successfully, welcome!`, 'success');
             renderDashboard(data);
         } else {
-            const errorMsg = data.error ? `${data.msg}: ${data.error}` : (data.msg || "Authentication failed. Check entry logs.");
+            const errorMsg = data.error ? (data.msg ? `${data.msg}: ${data.error}` : data.error) : (data.msg || "Authentication failed. Check entry logs.");
             showToast(errorMsg, 'error');
         }
     } catch (err) {
         console.error("Auth Fetch Error:", err);
-        showToast("Cannot connect to PharmaNet backend.", 'error');
+        showToast(`Network Error: Cannot connect to PharmaNet backend.`, 'error');
     }
 };
 
