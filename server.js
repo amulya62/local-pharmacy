@@ -12,32 +12,52 @@ const Feedback = require('./models/Feedback');
 const app = express();
 
 // --- 1. MIDDLEWARE ---
-const allowedOrigins = [
-    "http://localhost:5000",
-    "https://amulya62.github.io",
-    "https://local-pharmacy.vercel.app"
-];
-if (process.env.FRONTEND_URL) {
-    allowedOrigins.push(process.env.FRONTEND_URL);
-}
-
 app.use(cors({
-    origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.github.io')) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
+    origin: true,
     methods: ["GET", "POST", "PATCH", "DELETE"],
     credentials: true
-})); 
+}));
 app.use(express.json());
 
 // Serve static frontend files from 'public' folder
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- 2. API ROUTES ---
+// --- 2. DATABASE CONNECTION MIDDLEWARE ---
+// FORCE the Atlas connection string to ignore any broken Vercel Environment Variables
+let mongoURI = "mongodb+srv://pharma_admin:pharmaPassword123@cluster0.ow0h7bx.mongodb.net/pharma_network?appName=Cluster0";
+
+let isConnected = false;
+const connectDB = async () => {
+    if (isConnected || mongoose.connection.readyState >= 1) {
+        return;
+    }
+    try {
+        // Disable buffering so it fails fast instead of hanging for 10s
+        await mongoose.connect(mongoURI, {
+            serverSelectionTimeoutMS: 5000, 
+            bufferCommands: false
+        });
+        isConnected = true;
+        console.log("✅ MongoDB Connected Successfully");
+        
+        // Clean indexes in background (fire and forget)
+        mongoose.connection.db.collection('users').dropIndexes().catch(() => {});
+    } catch (err) {
+        console.error("❌ DB Connection Error:", err.message);
+        throw err;
+    }
+};
+
+app.use(async (req, res, next) => {
+    try {
+        await connectDB();
+        next();
+    } catch (err) {
+        res.status(500).json({ msg: "Database Connection Failed", error: "Please check MongoDB IP Allowlist." });
+    }
+});
+
+// --- 3. API ROUTES ---
 
 // Authentication Router
 app.use('/api/auth', authRoutes);
@@ -277,40 +297,6 @@ app.delete('/api/feedback/:id', async (req, res) => {
 // Fallback HTML page routing for SPA
 app.get('/*splat', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// --- 3. DATABASE CONNECTION & SERVER START ---
-// FORCE the Atlas connection string to ignore any broken Vercel Environment Variables
-let mongoURI = "mongodb+srv://pharma_admin:pharmaPassword123@cluster0.ow0h7bx.mongodb.net/pharma_network?appName=Cluster0";
-
-let isConnected = false;
-const connectDB = async () => {
-    if (isConnected || mongoose.connection.readyState >= 1) {
-        return;
-    }
-    try {
-        await mongoose.connect(mongoURI, {
-            serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of hanging
-        });
-        isConnected = true;
-        console.log("✅ MongoDB Connected Successfully");
-        
-        // Clean indexes in background (fire and forget)
-        mongoose.connection.db.collection('users').dropIndexes().catch(() => {});
-    } catch (err) {
-        console.error("❌ DB Connection Error:", err.message);
-        throw err;
-    }
-};
-
-// Add DB Connection Middleware for Serverless
-app.use(async (req, res, next) => {
-    try {
-        await connectDB();
-        next();
-    } catch (err) {
-        res.status(500).json({ error: "Database connection failed. Please check MongoDB IP Allowlist." });
-    }
 });
 
 // Dual-Mode Startup: Only call app.listen() if NOT running in the Vercel Serverless environment
