@@ -265,7 +265,7 @@ app.get('/*splat', (req, res) => {
 });
 
 // --- 3. DATABASE CONNECTION & SERVER START ---
-const mongoURI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/pharma_network";
+const mongoURI = process.env.MONGODB_URI || "mongodb+srv://pharma_admin:pharmaPassword123@cluster0.ow0h7bx.mongodb.net/pharma_network?appName=Cluster0";
 
 // Connect to MongoDB asynchronously
 mongoose.connect(mongoURI)
