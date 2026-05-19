@@ -4,7 +4,9 @@
  */
 
 // 1. DYNAMIC API ROUTING: Uses same domain hosting the app
-const API_BASE_URL = window.location.origin;
+const API_BASE_URL = window.location.hostname.includes('github.io') 
+    ? 'https://local-pharmacy-higt.vercel.app' 
+    : window.location.origin;
 
 let isLogin = true;
 let allMeds = [];
