@@ -15,7 +15,7 @@ const app = express();
 const allowedOrigins = [
     "http://localhost:5000",
     "https://amulya62.github.io",
-    "https://local-pharmacy-higt.vercel.app"
+    "https://local-pharmacy.vercel.app"
 ];
 if (process.env.FRONTEND_URL) {
     allowedOrigins.push(process.env.FRONTEND_URL);
