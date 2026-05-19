@@ -280,12 +280,8 @@ app.get('/*splat', (req, res) => {
 });
 
 // --- 3. DATABASE CONNECTION & SERVER START ---
-let mongoURI = process.env.MONGODB_URI || "mongodb+srv://pharma_admin:pharmaPassword123@cluster0.ow0h7bx.mongodb.net/pharma_network?appName=Cluster0";
-
-// Force Atlas connection if Vercel env is mistakenly set to local
-if (mongoURI.includes('127.0.0.1') || mongoURI.includes('localhost')) {
-    mongoURI = "mongodb+srv://pharma_admin:pharmaPassword123@cluster0.ow0h7bx.mongodb.net/pharma_network?appName=Cluster0";
-}
+// FORCE the Atlas connection string to ignore any broken Vercel Environment Variables
+let mongoURI = "mongodb+srv://pharma_admin:pharmaPassword123@cluster0.ow0h7bx.mongodb.net/pharma_network?appName=Cluster0";
 
 let isConnected = false;
 const connectDB = async () => {
