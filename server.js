@@ -287,27 +287,42 @@ if (mongoURI.includes('127.0.0.1') || mongoURI.includes('localhost')) {
     mongoURI = "mongodb+srv://pharma_admin:pharmaPassword123@cluster0.ow0h7bx.mongodb.net/pharma_network?appName=Cluster0";
 }
 
-// Connect to MongoDB asynchronously
-mongoose.connect(mongoURI)
-    .then(async () => {
+let isConnected = false;
+const connectDB = async () => {
+    if (isConnected || mongoose.connection.readyState >= 1) {
+        return;
+    }
+    try {
+        await mongoose.connect(mongoURI, {
+            serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of hanging
+        });
+        isConnected = true;
         console.log("✅ MongoDB Connected Successfully");
-        // Auto-clean any old conflicting indexes on the users collection from previous projects
-        try {
-            await mongoose.connection.db.collection('users').dropIndexes();
-            console.log("🧹 Cleaned old database collection indexes successfully");
-        } catch (e) {
-            // Collection doesn't exist yet, ignore
-        }
-    })
-    .catch(err => {
-        console.error("❌ DB Connection Error:");
-        console.error(err.message);
-    });
+        
+        // Clean indexes in background (fire and forget)
+        mongoose.connection.db.collection('users').dropIndexes().catch(() => {});
+    } catch (err) {
+        console.error("❌ DB Connection Error:", err.message);
+        throw err;
+    }
+};
+
+// Add DB Connection Middleware for Serverless
+app.use(async (req, res, next) => {
+    try {
+        await connectDB();
+        next();
+    } catch (err) {
+        res.status(500).json({ error: "Database connection failed. Please check MongoDB IP Allowlist." });
+    }
+});
 
 // Dual-Mode Startup: Only call app.listen() if NOT running in the Vercel Serverless environment
 if (!process.env.VERCEL) {
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => console.log(`🚀 Server running locally on port ${PORT}`));
+    connectDB().then(() => {
+        app.listen(PORT, () => console.log(`🚀 Server running locally on port ${PORT}`));
+    });
 }
 
 // Export the Express app for Vercel Serverless Handler
