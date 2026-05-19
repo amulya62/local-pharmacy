@@ -12,8 +12,23 @@ const Feedback = require('./models/Feedback');
 const app = express();
 
 // --- 1. MIDDLEWARE ---
+const allowedOrigins = [
+    "http://localhost:5000",
+    "https://amulya62.github.io",
+    "https://local-pharmacy-higt.vercel.app"
+];
+if (process.env.FRONTEND_URL) {
+    allowedOrigins.push(process.env.FRONTEND_URL);
+}
+
 app.use(cors({
-    origin: process.env.FRONTEND_URL || "*",
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.github.io')) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     methods: ["GET", "POST", "PATCH", "DELETE"],
     credentials: true
 })); 
